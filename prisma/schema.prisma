@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  client    Client?
+  serviser  Serviser?
+  radniNalozi RadniNalog[] @relation("AssignedServiser")
+  timeEntries     TimeEntry[]
+  documents   Document[]
+}
+
+enum Role {
+  USER
+  ADMIN
+  SERVISER
+  CLIENT
+}
+
+model Client {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  name      String
+  locations Location[]
+  radniNalozi RadniNalog[]
+  fakture   Faktura[]
+}
+
+model Serviser {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  specialization String?
+  radniNalozi RadniNalog[] @relation("AssignedServiser")
+}
+
+model Location {
+  id        String   @id @default(uuid())
+  address   String
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id])
+  radniNalozi RadniNalog[]
+}
+
+model RadniNalog {
+  id            String   @id @default(uuid())
+  broj          Int      @unique @default(autoincrement())
+  klijentId     String
+  klijent       Client   @relation(fields: [klijentId], references: [id])
+  lokacijaId    String
+  lokacija      Location @relation(fields: [lokacijaId], references: [id])
+  opis          String
+  status        StatusNaloga @default(NOVI)
+  prioritet     Prioritet
+  datumKreiranja DateTime @default(now())
+  datumZavrsetka DateTime?
+  serviserId    String?
+  serviser      User?    @relation("AssignedServiser", fields: [serviserId], references: [id])
+  napomena      String?
+  inventarStavke InventarStavkaNaloga[]
+  timeEntries     TimeEntry[]
+  documents   Document[]
+}
+
+enum StatusNaloga {
+  NOVI
+  U_TIJEKU
+  ZAVRSEN
+}
+
+enum Prioritet {
+  NIZAK
+  SREDNJI
+  VISOK
+}
+
+model InventarItem {
+  id        String   @id @default(uuid())
+  naziv     String
+  kolicina  Int
+  cijena    Float
+  radniNalozi InventarStavkaNaloga[]
+}
+
+model InventarStavkaNaloga {
+  id            String   @id @default(uuid())
+  radniNalogId  String
+  radniNalog    RadniNalog @relation(fields: [radniNalogId], references: [id])
+  inventarItemId String
+  inventarItem  InventarItem @relation(fields: [inventarItemId], references: [id])
+  kolicina      Int
+  cijena        Float
+}
+
+model Faktura {
+  id            String   @id @default(uuid())
+  broj          String   @unique
+  klijentId     String
+  klijent       Client   @relation(fields: [klijentId], references: [id])
+  datum         DateTime @default(now())
+  datumDospijeca DateTime
+  ukupanIznos   Float
+  status        StatusFakture @default(NEPLACENO)
+  stavke        FakturaStavka[]
+}
+
+enum StatusFakture {
+  NEPLACENO
+  PLACENO
+  STORNIRANO
+}
+
+model FakturaStavka {
+  id            String   @id @default(uuid())
+  fakturaId     String
+  faktura       Faktura  @relation(fields: [fakturaId], references: [id])
+  opis          String
+  kolicina      Int
+  cijena        Float
+}
+
+model TimeEntry {
+  id              String    @id @default(uuid())
+  start           DateTime
+  end             DateTime?
+  duration        Int?
+  radniNalogId    String
+  radniNalogBroj  Int
+  radniNalog      RadniNalog @relation(fields: [radniNalogId], references: [id])
+  serviserId      String
+  serviser        User      @relation(fields: [serviserId], references: [id])
+}
+
+model Document {
+  id          String    @id @default(uuid())
+  naziv       String
+  opis        String?
+  tip         String
+  url         String
+  velicina    Int
+  uploaderId  String
+  uploader    User      @relation(fields: [uploaderId], references: [id])
+  radniNalogId String?
+  radniNalog  RadniNalog? @relation(fields: [radniNalogId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
